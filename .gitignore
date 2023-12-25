@@ -3,6 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+*.csv
+recsys_project_baseline_and_evaluation_pipeline.ipynb
+*.zip
+*.pth
+*.xlsx
+*.pdf
+*.png
+
 # C extensions
 *.so
 
