@@ -1,25 +1,18 @@
-import sys
 from functools import partial
 
 import torch
 from torch import nn
 
+import sys
 for path in sys.path:
     print(path)
 from feature_extraction.feature_extractors import FeatureExtractor
 
 
 class RecSys(nn.Module):
-    def __init__(
-        self,
-        n_users: int,
-        n_items: int,
-        rec_sys_param,
-        user_feature_extractor: FeatureExtractor,
-        item_feature_extractor: FeatureExtractor,
-        loss_func_name: str,
-        loss_func_aggr: str = "mean",
-    ):
+
+    def __init__(self, n_users: int, n_items: int, rec_sys_param, user_feature_extractor: FeatureExtractor,
+                 item_feature_extractor: FeatureExtractor, loss_func_name: str, loss_func_aggr: str = 'mean'):
         """
         General Recommender System
         It generates the user/item vectors (given the feature extractors) and computes the similarity by the dot product.
@@ -32,10 +25,7 @@ class RecSys(nn.Module):
         :param loss_func_aggr: type of aggregation for the loss function, either 'mean' or 'sum'.
         """
 
-        assert loss_func_aggr in [
-            "mean",
-            "sum",
-        ], f"Loss function aggregators <{loss_func_aggr}> not implemented...yet"
+        assert loss_func_aggr in ['mean', 'sum'], f'Loss function aggregators <{loss_func_aggr}> not implemented...yet'
 
         super().__init__()
         self.n_users = n_users
@@ -46,49 +36,39 @@ class RecSys(nn.Module):
         self.loss_func_name = loss_func_name
         self.loss_func_aggr = loss_func_aggr
 
-        self.use_bias = (
-            self.rec_sys_param["use_bias"] > 0
-            if "use_bias" in self.rec_sys_param
-            else True
-        )
+        self.use_bias = self.rec_sys_param["use_bias"] > 0 if 'use_bias' in self.rec_sys_param else True
 
         if self.use_bias:
             self.user_bias = nn.Embedding(self.n_users, 1)
             self.item_bias = nn.Embedding(self.n_items, 1)
             self.global_bias = nn.Parameter(torch.zeros(1), requires_grad=True)
 
-        if self.loss_func_name == "bce":
+        if self.loss_func_name == 'bce':
             self.rec_loss = partial(bce_loss, aggregator=self.loss_func_aggr)
-        elif self.loss_func_name == "bpr":
+        elif self.loss_func_name == 'bpr':
             self.rec_loss = partial(bpr_loss, aggregator=self.loss_func_aggr)
-        elif self.loss_func_name == "sampled_softmax":
-            self.rec_loss = partial(
-                sampled_softmax_loss, aggregator=self.loss_func_aggr
-            )
+        elif self.loss_func_name == 'sampled_softmax':
+            self.rec_loss = partial(sampled_softmax_loss, aggregator=self.loss_func_aggr)
         else:
-            raise ValueError(
-                f"Recommender System Loss function <{self.rec_loss}> Not Implemented... Yet"
-            )
+            raise ValueError(f'Recommender System Loss function <{self.rec_loss}> Not Implemented... Yet')
 
         self.initialized = False
 
-        print(
-            f"Built RecSys module \n"
-            f"- n_users: {self.n_users} \n"
-            f"- n_items: {self.n_items} \n"
-            f"- user_feature_extractor: {self.user_feature_extractor.name} \n"
-            f"- item_feature_extractor: {self.item_feature_extractor.name} \n"
-            f"- loss_func_name: {self.loss_func_name} \n"
-            f"- use_bias: {self.use_bias} \n"
-        )
+        print(f'Built RecSys module \n'
+              f'- n_users: {self.n_users} \n'
+              f'- n_items: {self.n_items} \n'
+              f'- user_feature_extractor: {self.user_feature_extractor.name} \n'
+              f'- item_feature_extractor: {self.item_feature_extractor.name} \n'
+              f'- loss_func_name: {self.loss_func_name} \n'
+              f'- use_bias: {self.use_bias} \n')
 
     def init_parameters(self):
         """
         Method for initializing the Recommender System Processor
         """
         if self.use_bias:
-            torch.nn.init.constant_(self.user_bias.weight, 0.0)
-            torch.nn.init.constant_(self.item_bias.weight, 0.0)
+            torch.nn.init.constant_(self.user_bias.weight, 0.)
+            torch.nn.init.constant_(self.item_bias.weight, 0.)
 
         self.user_feature_extractor.init_parameters()
         self.item_feature_extractor.init_parameters()
@@ -119,10 +99,8 @@ class RecSys(nn.Module):
         :return: A matrix of logits values. Shape is (batch_size, 1 + n_neg). First column is always associated
                 to the positive track.
         """
-        assert self.initialized, (
-            "Model initialization has not been called! Please call .init_parameters() "
-            "before using the model"
-        )
+        assert self.initialized, 'Model initialization has not been called! Please call .init_parameters() ' \
+                                 'before using the model'
 
         # --- User pass ---
         u_embed = self.user_feature_extractor(u_idxs)
@@ -136,9 +114,7 @@ class RecSys(nn.Module):
         i_embed = self.item_feature_extractor(i_idxs)
 
         # --- Dot Product ---
-        dots = torch.sum(
-            u_embed.unsqueeze(1) * i_embed, dim=-1
-        )  # [batch_size, n_neg_p_1]
+        dots = torch.sum(u_embed.unsqueeze(1) * i_embed, dim=-1)  # [batch_size, n_neg_p_1]
 
         if self.use_bias:
             # Optional bias
@@ -147,7 +123,7 @@ class RecSys(nn.Module):
         return dots
 
 
-def bce_loss(logits, labels, aggregator="mean"):
+def bce_loss(logits, labels, aggregator='mean'):
     """
     It computes the binary cross entropy loss with negative sampling, expressed by the formula:
                                     -∑_j log(x_ui) + log(1 - x_uj)
@@ -165,14 +141,12 @@ def bce_loss(logits, labels, aggregator="mean"):
     weights = torch.ones_like(logits)
     weights[:, 0] = logits.shape[1] - 1
 
-    loss = nn.BCEWithLogitsLoss(weights.flatten(), reduction=aggregator)(
-        logits.flatten(), labels.flatten()
-    )
+    loss = nn.BCEWithLogitsLoss(weights.flatten(), reduction=aggregator)(logits.flatten(), labels.flatten())
 
     return loss
 
 
-def bpr_loss(logits, labels, aggregator="mean"):
+def bpr_loss(logits, labels, aggregator='mean'):
     """
     It computes the Bayesian Personalized Ranking loss (https://arxiv.org/pdf/1205.2618.pdf).
 
@@ -191,14 +165,12 @@ def bpr_loss(logits, labels, aggregator="mean"):
 
     diff_logits = pos_logits - neg_logits
 
-    loss = nn.BCEWithLogitsLoss(reduction=aggregator)(
-        diff_logits.flatten(), labels.flatten()
-    )
+    loss = nn.BCEWithLogitsLoss(reduction=aggregator)(diff_logits.flatten(), labels.flatten())
 
     return loss
 
 
-def sampled_softmax_loss(logits, labels, aggregator="sum"):
+def sampled_softmax_loss(logits, labels, aggregator='sum'):
     """
     It computes the (Sampled) Softmax Loss (a.k.a. sampled cross entropy) expressed by the formula:
                         -x_ui +  log( ∑_j e^{x_uj})
@@ -211,14 +183,14 @@ def sampled_softmax_loss(logits, labels, aggregator="sum"):
     :return:
     """
 
-    pos_logits_sum = -logits[:, 0]
+    pos_logits_sum = - logits[:, 0]
     log_sum_exp_sum = torch.logsumexp(logits, dim=-1)
 
     sampled_loss = pos_logits_sum + log_sum_exp_sum
 
-    if aggregator == "sum":
+    if aggregator == 'sum':
         return sampled_loss.sum()
-    elif aggregator == "mean":
+    elif aggregator == 'mean':
         return sampled_loss.mean()
     else:
-        raise ValueError("Loss aggregator not defined")
+        raise ValueError('Loss aggregator not defined')

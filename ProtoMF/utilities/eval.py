@@ -14,7 +14,7 @@ def Hit_Ratio_at_k_batch(logits: np.ndarray, k=10, sum=True):
     :return: HR@K. Shape is (batch_size,) if sum=False, otherwise returns a scalar.
     """
 
-    assert logits.shape[1] >= k, "k value is too high!"
+    assert logits.shape[1] >= k, 'k value is too high!'
 
     idx_topk_part = bn.argpartition(-logits, k, axis=1)[:, :k]
     hrs = np.any(idx_topk_part[:] == 0, axis=1).astype(int)
@@ -33,7 +33,7 @@ def NDCG_at_k_batch(logits: np.ndarray, k=10, sum=True):
     :param sum: if we have to sum the values over the batch_size. Default to true.
     :return: NDCG@K. Shape is (batch_size,) if sum=False, otherwise returns a scalar.
     """
-    assert logits.shape[1] >= k, "k value is too high!"
+    assert logits.shape[1] >= k, 'k value is too high!'
     n = logits.shape[0]
     dummy_column = np.arange(n).reshape(n, 1)
 
@@ -46,34 +46,33 @@ def NDCG_at_k_batch(logits: np.ndarray, k=10, sum=True):
     ndcgs = np.zeros(n)
 
     if rows.size > 0:
-        ndcgs[rows] = 1.0 / np.log2((cols + 1) + 1)
+        ndcgs[rows] = 1. / np.log2((cols + 1) + 1)
 
     if sum:
         return np.sum(ndcgs)
     else:
         return ndcgs
-
-
+        
 # def MAP_at_k_batch(logits: np.ndarray, k=10, sum=True):
-# values, indices = torch.topk(logits, k, dim=1)
-# batch_size, _ = logits.shape
-
-# top_k_mask = torch.zeros_like(logits).scatter_(1, indices, 1)
-
-# ap = torch.zeros(batch_size)
-
-# for i in range(batch_size):
-# row = top_k_mask[i]
-# tp = torch.cumsum(row, dim=0)
-# fp = torch.cumsum(1 - row, dim=0)
-# recalls = tp / (tp + fp)
-# precisions = tp / (torch.arange(1, k+1, dtype=torch.float32) + fp)
-# ap[i] = torch.sum(precisions * row) / torch.sum(row)
-
-# if sum:
-# return torch.mean(ap)
-# else:
-# return ap
+    # values, indices = torch.topk(logits, k, dim=1)
+    # batch_size, _ = logits.shape
+    
+    # top_k_mask = torch.zeros_like(logits).scatter_(1, indices, 1)
+    
+    # ap = torch.zeros(batch_size)
+    
+    # for i in range(batch_size):
+        # row = top_k_mask[i]
+        # tp = torch.cumsum(row, dim=0)
+        # fp = torch.cumsum(1 - row, dim=0)
+        # recalls = tp / (tp + fp)
+        # precisions = tp / (torch.arange(1, k+1, dtype=torch.float32) + fp)
+        # ap[i] = torch.sum(precisions * row) / torch.sum(row)
+        
+    # if sum:
+        # return torch.mean(ap)
+    # else:
+        # return ap
 
 
 class Evaluator:
@@ -93,22 +92,13 @@ class Evaluator:
         :param out: Values after last layer. Shape is (batch_size, n_neg + 1).
         """
         for k in K_VALUES:
-            for metric_name, metric in zip(
-                ["ndcg@{}", "hit_ratio@{}", "map@{}"],
-                [NDCG_at_k_batch, Hit_Ratio_at_k_batch],
-            ):
+            for metric_name, metric in zip(['ndcg@{}', 'hit_ratio@{}', 'map@{}'], [NDCG_at_k_batch, Hit_Ratio_at_k_batch]):
                 if sum:
-                    self.metrics_values[
-                        metric_name.format(k)
-                    ] = self.metrics_values.get(metric_name.format(k), 0) + metric(
-                        out, k
-                    )
+                    self.metrics_values[metric_name.format(k)] = self.metrics_values.get(metric_name.format(k), 0) + \
+                                                                 metric(out, k)
                 else:
-                    self.metrics_values[
-                        metric_name.format(k)
-                    ] = self.metrics_values.get(metric_name.format(k), []) + list(
-                        metric(out, k, False)
-                    )
+                    self.metrics_values[metric_name.format(k)] = self.metrics_values.get(metric_name.format(k),
+                                                                                         []) + list(metric(out, k, False))
 
     def get_results(self, aggregated=True):
         """
@@ -121,9 +111,7 @@ class Evaluator:
             # Logging if logger is specified
             if self.logger:
                 for metric_name in self.metrics_values:
-                    self.logger.log_scalar(
-                        metric_name, self.metrics_values[metric_name]
-                    )
+                    self.logger.log_scalar(metric_name, self.metrics_values[metric_name])
 
         metrics_dict = self.metrics_values
         self.metrics_values = {}

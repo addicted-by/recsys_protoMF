@@ -9,22 +9,22 @@ from torch import nn
 
 
 def pickle_load(file_path):
-    return pickle.load(open(file_path, "rb"))
+    return pickle.load(open(file_path, 'rb'))
 
 
 def pickle_dump(x, file_path):
-    return pickle.dump(x, open(file_path, "wb"))
+    return pickle.dump(x, open(file_path, 'wb'))
 
 
 def json_load(file_path):
-    return json.load(open(file_path, "r"))
+    return json.load(open(file_path, 'r'))
 
 
 def general_weight_init(m):
     if type(m) in [nn.Linear, nn.Conv2d]:
         if m.weight.requires_grad:
-            torch.nn.init.kaiming_uniform_(m.weight, nonlinearity="relu")
-            if hasattr(m, "bias") and m.bias is not None and m.bias.requires_grad:
+            torch.nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+            if hasattr(m, 'bias') and m.bias is not None and m.bias.requires_grad:
                 torch.nn.init.constant_(m.bias, 0)
     elif type(m) == nn.Embedding:
         if m.weight.requires_grad:
@@ -37,15 +37,8 @@ def general_weight_init(m):
 
 def generate_id(prefix=None, postfix=None):
     dateTimeObj = datetime.now()
-    uid = "{}-{}-{}_{}-{}-{}.{}".format(
-        dateTimeObj.year,
-        dateTimeObj.month,
-        dateTimeObj.day,
-        dateTimeObj.hour,
-        dateTimeObj.minute,
-        dateTimeObj.second,
-        dateTimeObj.microsecond,
-    )
+    uid = '{}-{}-{}_{}-{}-{}.{}'.format(dateTimeObj.year, dateTimeObj.month, dateTimeObj.day, dateTimeObj.hour,
+                                        dateTimeObj.minute, dateTimeObj.second, dateTimeObj.microsecond)
     if not prefix is None:
         uid = prefix + "_" + uid
     if not postfix is None:

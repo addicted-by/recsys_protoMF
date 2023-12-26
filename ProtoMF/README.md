@@ -121,10 +121,8 @@ optimization procedures and average the test results.
 
 Results and progress can be checked on the Weight&Biases webpage.
 
-## License
-
+## License 
 The code in this repository is licensed under the Apache 2.0 License. For details, please see the LICENSE file.
-
 ## Acknowledgments
 
 This work received financial support by the Austrian Science Fund (FWF): P33526 and DFH-23; and by the State of Upper Austria and the Federal Ministry of Education, Science, and Research, through grant LIT-2020-9-SEE-113 and LIT-2021-YOU-215.

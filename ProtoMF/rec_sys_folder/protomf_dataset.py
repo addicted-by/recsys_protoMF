@@ -27,20 +27,14 @@ class ProtoRecDataset(data.Dataset):
     in the csr matrix, for which we also exclude items from training (see below).
     """
 
-    def __init__(
-        self, data_path: str, split_set: str, n_neg: int, neg_strategy: str = "uniform"
-    ):
+    def __init__(self, data_path: str, split_set: str, n_neg: int, neg_strategy: str = 'uniform'):
         """
         :param data_path: path to the directory with the listening_history_*, item_ids, and user_ids files.
         :param split_set: Value in [train, val, test].
         :param n_neg: Number of negative samples.
         :param neg_strategy: Strategy to select the negative samples.
         """
-        assert split_set in [
-            "train",
-            "val",
-            "test",
-        ], f"<{split_set}> is not a valid value for split set!"
+        assert split_set in ['train', 'val', 'test'], f'<{split_set}> is not a valid value for split set!'
 
         self.data_path = data_path
         self.split_set = split_set
@@ -59,79 +53,59 @@ class ProtoRecDataset(data.Dataset):
 
         self.load_data()
 
-        print(
-            f"Built ProtoRecDataset module \n"
-            f"- data_path: {self.data_path} \n"
-            f"- n_users: {self.n_users} \n"
-            f"- n_items: {self.n_items} \n"
-            f"- n_interactions: {self.coo_matrix.nnz} \n"
-            f"- split_set: {self.split_set} \n"
-            f"- n_neg: {self.n_neg} \n"
-            f"- neg_strategy: {self.neg_strategy} \n"
-        )
+        print(f'Built ProtoRecDataset module \n'
+              f'- data_path: {self.data_path} \n'
+              f'- n_users: {self.n_users} \n'
+              f'- n_items: {self.n_items} \n'
+              f'- n_interactions: {self.coo_matrix.nnz} \n'
+              f'- split_set: {self.split_set} \n'
+              f'- n_neg: {self.n_neg} \n'
+              f'- neg_strategy: {self.neg_strategy} \n')
 
     def load_data(self):
-        print("Loading data")
+        print('Loading data')
 
-        user_ids = pd.read_csv(os.path.join(self.data_path, "user_ids.csv"))
-        item_ids = pd.read_csv(os.path.join(self.data_path, "item_ids.csv"))
+        user_ids = pd.read_csv(os.path.join(self.data_path, 'user_ids.csv'))
+        item_ids = pd.read_csv(os.path.join(self.data_path, 'item_ids.csv'))
 
         self.n_users = len(user_ids)
         self.n_items = len(item_ids)
 
-        train_lhs = pd.read_csv(
-            os.path.join(self.data_path, "listening_history_train.csv")
-        )
+        train_lhs = pd.read_csv(os.path.join(self.data_path, 'listening_history_train.csv'))
 
         train_csr = sp.csr_matrix(
-            (
-                np.ones(len(train_lhs), dtype=np.int16),
-                (train_lhs.user_id, train_lhs.item_id),
-            ),
-            shape=(self.n_users, self.n_items),
-        )
+            (np.ones(len(train_lhs), dtype=np.int16), (train_lhs.user_id, train_lhs.item_id)),
+            shape=(self.n_users, self.n_items))
 
         # Computing the popularity distribution (see _neg_sample_popular)
         item_popularity = np.array(train_csr.sum(axis=0)).flatten()
         self.pop_distribution = item_popularity / item_popularity.sum()
 
-        if self.split_set == "val":
-            val_lhs = pd.read_csv(
-                os.path.join(self.data_path, "listening_history_val.csv")
-            )
+        if self.split_set == 'val':
+            val_lhs = pd.read_csv(os.path.join(self.data_path, 'listening_history_val.csv'))
 
             val_csr = sp.csr_matrix(
-                (
-                    np.ones(len(val_lhs), dtype=np.int16),
-                    (val_lhs.user_id, val_lhs.item_id),
-                ),
-                shape=(self.n_users, self.n_items),
-            )
+                (np.ones(len(val_lhs), dtype=np.int16), (val_lhs.user_id, val_lhs.item_id)),
+                shape=(self.n_users, self.n_items))
 
             val_coo = sp.coo_matrix(val_csr)
 
             self.coo_matrix = val_coo
             self.csr_matrix = val_csr + train_csr
 
-        elif self.split_set == "test":
-            test_lhs = pd.read_csv(
-                os.path.join(self.data_path, "listening_history_test.csv")
-            )
+        elif self.split_set == 'test':
+            test_lhs = pd.read_csv(os.path.join(self.data_path, 'listening_history_test.csv'))
 
             test_csr = sp.csr_matrix(
-                (
-                    np.ones(len(test_lhs), dtype=np.int16),
-                    (test_lhs.user_id, test_lhs.item_id),
-                ),
-                shape=(self.n_users, self.n_items),
-            )
+                (np.ones(len(test_lhs), dtype=np.int16), (test_lhs.user_id, test_lhs.item_id)),
+                shape=(self.n_users, self.n_items))
 
             test_coo = sp.coo_matrix(test_csr)
 
             self.coo_matrix = test_coo
             self.csr_matrix = test_csr + train_csr
 
-        elif self.split_set == "train":
+        elif self.split_set == 'train':
             train_coo = sp.coo_matrix(train_csr)
 
             self.coo_matrix = train_coo
@@ -144,18 +118,14 @@ class ProtoRecDataset(data.Dataset):
         :return: npy array containing the negatively sampled items.
         """
 
-        consumed_items = self.csr_matrix.indices[
-            self.csr_matrix.indptr[row_idx] : self.csr_matrix.indptr[row_idx + 1]
-        ]
+        consumed_items = self.csr_matrix.indices[self.csr_matrix.indptr[row_idx]:self.csr_matrix.indptr[row_idx + 1]]
 
         # Uniform distribution without items consumed by the user
         p = np.ones(self.n_items)
-        p[consumed_items] = 0.0  # Excluding consumed items
+        p[consumed_items] = 0.  # Excluding consumed items
         p = p / p.sum()
 
-        sampled = np.random.choice(
-            np.arange(self.n_items), self.n_neg, replace=False, p=p
-        )
+        sampled = np.random.choice(np.arange(self.n_items), self.n_neg, replace=False, p=p)
 
         return sampled
 
@@ -166,18 +136,14 @@ class ProtoRecDataset(data.Dataset):
         :param row_idx: user id (or row in the matrix)
         :return: npy array containing the negatively sampled items.
         """
-        consumed_items = self.csr_matrix.indices[
-            self.csr_matrix.indptr[row_idx] : self.csr_matrix.indptr[row_idx + 1]
-        ]
+        consumed_items = self.csr_matrix.indices[self.csr_matrix.indptr[row_idx]:self.csr_matrix.indptr[row_idx + 1]]
 
         p = self.pop_distribution.copy()
-        p[consumed_items] = 0.0  # Excluding consumed items
-        p = np.power(p, 0.75)  # Squashing factor alpha = .75
+        p[consumed_items] = 0.  # Excluding consumed items
+        p = np.power(p, .75)  # Squashing factor alpha = .75
         p = p / p.sum()
 
-        sampled = np.random.choice(
-            np.arange(self.n_items), self.n_neg, replace=False, p=p
-        )
+        sampled = np.random.choice(np.arange(self.n_items), self.n_neg, replace=False, p=p)
         return sampled
 
     def __len__(self) -> int:
@@ -195,30 +161,27 @@ class ProtoRecDataset(data.Dataset):
 
         """
 
-        user_idx = self.coo_matrix.row[index].astype("int64")
+        user_idx = self.coo_matrix.row[index].astype('int64')
         item_idx_pos = self.coo_matrix.col[index]
 
         # Select the correct negative sampling strategy
-        if self.neg_strategy == "uniform":
+        if self.neg_strategy == 'uniform':
             neg_samples = self._neg_sample_uniform(user_idx)
-        elif self.neg_strategy == "popular":
+        elif self.neg_strategy == 'popular':
             neg_samples = self._neg_sample_popular(user_idx)
         else:
-            raise ValueError(
-                f"Negative Sampling Strategy <{self.neg_strategy}> not implemented ... Yet"
-            )
+            raise ValueError(f'Negative Sampling Strategy <{self.neg_strategy}> not implemented ... Yet')
 
-        item_idxs = np.concatenate(([item_idx_pos], neg_samples)).astype("int64")
+        item_idxs = np.concatenate(([item_idx_pos], neg_samples)).astype('int64')
 
-        labels = np.zeros(1 + self.n_neg, dtype="float32")
-        labels[0] = 1.0
+        labels = np.zeros(1 + self.n_neg, dtype='float32')
+        labels[0] = 1.
 
         return user_idx, item_idxs, labels
 
 
-def get_protorecdataset_dataloader(
-    data_path: str, split_set: str, n_neg: int, neg_strategy="uniform", **loader_params
-) -> data.DataLoader:
+def get_protorecdataset_dataloader(data_path: str, split_set: str, n_neg: int, neg_strategy='uniform',
+                                   **loader_params) -> data.DataLoader:
     """
     Returns the dataloader for a ProtoRecDataset
     :param data_path, ... ,neg_strategy: check ProtoRecDataset class for info about these parameters
